@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>CUP LIVE</title>
+
+<style>
+body {
+  margin: 0;
+  background: transparent;
+  font-family: Arial;
+  color: white;
+}
+
+.title {
+  font-size: 46px;
+  text-align: center;
+  color: #a855f7;
+  text-shadow: 0 0 25px #a855f7;
+  margin-top: 20px;
+}
+
+.card {
+  width: 650px;
+  margin: 20px auto;
+  background: rgba(0,0,0,0.7);
+  border: 1px solid #a855f7;
+  box-shadow: 0 0 25px #a855f7;
+  padding: 20px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+
+/* 🥇 TOP 3 */
+.first { color: gold; text-shadow: 0 0 10px gold; }
+.second { color: silver; text-shadow: 0 0 10px silver; }
+.third { color: #cd7f32; text-shadow: 0 0 10px #cd7f32; }
+</style>
+</head>
+
+<body>
+
+<div class="title">
+  CUP LIVE — <span id="month"></span>
+</div>
+
+<div class="card">
+  🎮 Game: <span id="game">None</span>
+</div>
+
+<div class="card">
+  <div id="board"></div>
+</div>
+
+<script>
+document.getElementById("month").innerText =
+  new Date().toLocaleString('default', { month: 'long' });
+
+async function load() {
+  const res = await fetch("https://cup-live.onrender.com/data");
+  const data = await res.json();
+
+  document.getElementById("game").innerText = data.game || "None";
+
+  const scores = data.scores || {};
+
+  let sorted = Object.entries(scores)
+    .sort((a, b) => b[1].points - a[1].points);
+
+  let html = "";
+
+  if (sorted.length === 0) {
+    html = "<div style='text-align:center;'>🌌 No players yet...</div>";
+  } else {
+
+    sorted.forEach(([id, obj], i) => {
+
+      let medal =
+        i === 0 ? "🥇" :
+        i === 1 ? "🥈" :
+        i === 2 ? "🥉" : (i + 1);
+
+      let cls =
+        i === 0 ? "first" :
+        i === 1 ? "second" :
+        i === 2 ? "third" : "";
+
+      html += `
+        <div class="row ${cls}">
+          <div>${medal}</div>
+          <div>${obj.name}</div>
+          <div>${obj.points} pts</div>
+        </div>
+      `;
+    });
+  }
+
+  document.getElementById("board").innerHTML = html;
+}
+
+setInterval(load, 2000);
+load();
+</script>
+
+</body>
+</html>
