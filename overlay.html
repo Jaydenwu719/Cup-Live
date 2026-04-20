@@ -1,109 +1,92 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8" />
 <title>CUP LIVE</title>
 
 <style>
 body {
-  margin: 0;
-  background: transparent;
-  font-family: Arial;
+  background: black;
   color: white;
+  font-family: Arial;
 }
 
-.title {
-  font-size: 46px;
-  text-align: center;
-  color: #a855f7;
-  text-shadow: 0 0 25px #a855f7;
-  margin-top: 20px;
+.player {
+  padding: 8px;
+  margin: 5px;
+  transition: 0.3s;
 }
 
-.card {
-  width: 650px;
-  margin: 20px auto;
-  background: rgba(0,0,0,0.7);
-  border: 1px solid #a855f7;
-  box-shadow: 0 0 25px #a855f7;
-  padding: 20px;
-}
+.gold { color: gold; text-shadow: 0 0 10px gold; }
+.silver { color: silver; text-shadow: 0 0 10px silver; }
+.bronze { color: #cd7f32; text-shadow: 0 0 10px #cd7f32; }
 
-.row {
-  display: flex;
-  justify-content: space-between;
-  padding: 6px 0;
+.player:hover {
+  transform: scale(1.05);
 }
-
-/* 🥇 TOP 3 */
-.first { color: gold; text-shadow: 0 0 10px gold; }
-.second { color: silver; text-shadow: 0 0 10px silver; }
-.third { color: #cd7f32; text-shadow: 0 0 10px #cd7f32; }
 </style>
 </head>
 
 <body>
 
-<div class="title">
-  CUP LIVE — <span id="month"></span>
-</div>
+<h1>CUP LIVE</h1>
 
-<div class="card">
-  🎮 Game: <span id="game">None</span>
-</div>
+<select id="gameSelect"></select>
 
-<div class="card">
-  <div id="board"></div>
-</div>
+<div id="board"></div>
 
 <script>
-document.getElementById("month").innerText =
-  new Date().toLocaleString('default', { month: 'long' });
+let currentGame = "overall";
 
 async function load() {
-  const res = await fetch("https://cup-live.onrender.com/data");
+  const res = await fetch("/data");
   const data = await res.json();
 
-  document.getElementById("game").innerText = data.game || "None";
+  const select = document.getElementById("gameSelect");
 
-  const scores = data.scores || {};
+  select.innerHTML = "";
 
-  let sorted = Object.entries(scores)
-    .sort((a, b) => b[1].points - a[1].points);
+  Object.keys(data.scores).forEach(game => {
+    const opt = document.createElement("option");
+    opt.value = game;
+    opt.textContent = game;
+    select.appendChild(opt);
+  });
 
-  let html = "";
-
-  if (sorted.length === 0) {
-    html = "<div style='text-align:center;'>🌌 No players yet...</div>";
-  } else {
-
-    sorted.forEach(([id, obj], i) => {
-
-      let medal =
-        i === 0 ? "🥇" :
-        i === 1 ? "🥈" :
-        i === 2 ? "🥉" : (i + 1);
-
-      let cls =
-        i === 0 ? "first" :
-        i === 1 ? "second" :
-        i === 2 ? "third" : "";
-
-      html += `
-        <div class="row ${cls}">
-          <div>${medal}</div>
-          <div>${obj.name}</div>
-          <div>${obj.points} pts</div>
-        </div>
-      `;
-    });
+  if (data.bracket) {
+    const opt = document.createElement("option");
+    opt.value = "bracket";
+    opt.textContent = "Bracket";
+    select.appendChild(opt);
   }
 
-  document.getElementById("board").innerHTML = html;
+  let scores;
+
+  if (currentGame === "bracket") {
+    scores = data.bracketScores[data.game] || {};
+  } else {
+    scores = data.scores[currentGame] || {};
+  }
+
+  const sorted = Object.values(scores)
+    .sort((a, b) => b.points - a.points);
+
+  document.getElementById("board").innerHTML =
+    sorted.map((p, i) => {
+      let cls = "";
+      if (i === 0) cls = "gold";
+      else if (i === 1) cls = "silver";
+      else if (i === 2) cls = "bronze";
+
+      return `<div class="player ${cls}">${i+1}. ${p.name} - ${p.points}</div>`;
+    }).join("");
 }
 
+document.getElementById("gameSelect").addEventListener("change", e => {
+  currentGame = e.target.value;
+  load();
+});
+
 setInterval(load, 2000);
-load();
 </script>
 
 </body>

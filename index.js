@@ -1,11 +1,28 @@
+// 🌐 KEEP RENDER ALIVE (WEB SERVICE MODE)
+const express = require("express");
+const app = express();
+
+app.get("/", (req, res) => {
+  res.send("🏆 CUP LIVE BOT RUNNING");
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log("🌐 Web server active on port", PORT);
+});
+
+// ================= BOT CODE =================
+
+require('dotenv').config();
+
 const { Client, GatewayIntentBits } = require('discord.js');
 const axios = require('axios');
 
-// 🌍 YOUR HOSTED SERVER (Render)
-const API = "https://cup-live.onrender.com";
-
-// 🔐 TOKEN COMES FROM ENV (NOT CODE)
+// 🔐 SAFE TOKEN
 const TOKEN = process.env.TOKEN;
+
+// 🌍 YOUR API
+const API = "https://cup-live.onrender.com";
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
@@ -18,40 +35,42 @@ let cup = {
   scores: {}
 };
 
-// 🔐 Admin / Ref check
+// 🔐 ADMIN CHECK
 function isRef(member) {
   return member.permissions.has("Administrator") ||
          member.permissions.has("ManageGuild");
 }
 
-// 📡 Sync to Render server
+// 📡 SYNC TO SERVER
 async function sync() {
   try {
     await axios.post(`${API}/update`, cup);
-    console.log("SYNC OK");
+    console.log("📡 SYNC OK");
   } catch (err) {
-    console.log("SYNC ERROR:", err.message);
+    console.log("❌ SYNC ERROR:", err.message);
   }
 }
 
-// ================= COMMANDS =================
-client.on('interactionCreate', async i => {
+// ================= COMMAND HANDLER =================
+client.on('interactionCreate', async (i) => {
   if (!i.isChatInputCommand()) return;
 
-  // 🎮 START GAME
+  // 🎮 START
   if (i.commandName === 'start') {
 
     if (!isRef(i.member))
       return i.reply({ content: "Ref only", ephemeral: true });
 
     cup.game = i.options.getString('game');
+    cup.round = 1;
+    cup.scores = {};
 
     await sync();
 
     return i.reply(`🏆 CUP LIVE started: ${cup.game}`);
   }
 
-  // 🏆 SCORE COMMAND
+  // 🏆 SCORE
   if (i.commandName === 'score') {
 
     if (!isRef(i.member))
@@ -82,9 +101,9 @@ client.on('interactionCreate', async i => {
   }
 });
 
-// 🤖 BOT READY
+// 🤖 READY EVENT
 client.once('ready', () => {
-  console.log(`🏆 CUP LIVE BOT ONLINE: ${client.user.tag}`);
+  console.log(`🤖 BOT ONLINE: ${client.user.tag}`);
 });
 
 // 🔐 LOGIN
