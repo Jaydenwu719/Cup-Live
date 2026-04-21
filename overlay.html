@@ -1,39 +1,3 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>CUP LIVE</title>
-
-<style>
-body {
-  background: black;
-  color: white;
-  font-family: Arial;
-}
-
-.player {
-  padding: 8px;
-  margin: 5px;
-  transition: 0.3s;
-}
-
-.gold { color: gold; text-shadow: 0 0 10px gold; }
-.silver { color: silver; text-shadow: 0 0 10px silver; }
-.bronze { color: #cd7f32; text-shadow: 0 0 10px #cd7f32; }
-
-.player:hover {
-  transform: scale(1.05);
-}
-</style>
-</head>
-
-<body>
-
-<h1>CUP LIVE</h1>
-
-<select id="gameSelect"></select>
-
-<div id="board"></div>
-
 <script>
 let currentGame = "overall";
 
@@ -52,33 +16,28 @@ async function load() {
     select.appendChild(opt);
   });
 
-  if (data.bracket) {
-    const opt = document.createElement("option");
-    opt.value = "bracket";
-    opt.textContent = "Bracket";
-    select.appendChild(opt);
-  }
-
-  let scores;
-
-  if (currentGame === "bracket") {
-    scores = data.bracketScores[data.game] || {};
-  } else {
-    scores = data.scores[currentGame] || {};
-  }
+  const scores = data.scores[currentGame] || {};
 
   const sorted = Object.values(scores)
     .sort((a, b) => b.points - a.points);
 
-  document.getElementById("board").innerHTML =
-    sorted.map((p, i) => {
-      let cls = "";
-      if (i === 0) cls = "gold";
-      else if (i === 1) cls = "silver";
-      else if (i === 2) cls = "bronze";
+  const board = document.getElementById("board");
 
-      return `<div class="player ${cls}">${i+1}. ${p.name} - ${p.points}</div>`;
-    }).join("");
+  if (!sorted.length) {
+    board.innerHTML = "<div>No players yet</div>";
+    return;
+  }
+
+  board.innerHTML = sorted.map((p, i) => {
+
+    // 🧠 SAFETY FIX (prevents undefined errors)
+    const name = p.name || "Unknown";
+    const points = p.points ?? 0;
+
+    return `<div class="player">
+      ${i + 1}. ${name} - ${points} pts
+    </div>`;
+  }).join("");
 }
 
 document.getElementById("gameSelect").addEventListener("change", e => {
@@ -87,7 +46,5 @@ document.getElementById("gameSelect").addEventListener("change", e => {
 });
 
 setInterval(load, 2000);
+load();
 </script>
-
-</body>
-</html>
