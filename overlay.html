@@ -1,50 +1,170 @@
-<script>
-let currentGame = "overall";
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>CUP LIVE</title>
 
-async function load() {
-  const res = await fetch("/data");
-  const data = await res.json();
-
-  const select = document.getElementById("gameSelect");
-
-  select.innerHTML = "";
-
-  Object.keys(data.scores).forEach(game => {
-    const opt = document.createElement("option");
-    opt.value = game;
-    opt.textContent = game;
-    select.appendChild(opt);
-  });
-
-  const scores = data.scores[currentGame] || {};
-
-  const sorted = Object.values(scores)
-    .sort((a, b) => b.points - a.points);
-
-  const board = document.getElementById("board");
-
-  if (!sorted.length) {
-    board.innerHTML = "<div>No players yet</div>";
-    return;
-  }
-
-  board.innerHTML = sorted.map((p, i) => {
-
-    // 🧠 SAFETY FIX (prevents undefined errors)
-    const name = p.name || "Unknown";
-    const points = p.points ?? 0;
-
-    return `<div class="player">
-      ${i + 1}. ${name} - ${points} pts
-    </div>`;
-  }).join("");
+<style>
+body {
+  background: #000;
+  color: white;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
 }
 
+h1 {
+  margin-bottom: 10px;
+}
+
+select {
+  padding: 6px;
+  margin: 5px;
+  background: #111;
+  color: white;
+  border: 1px solid #444;
+}
+
+.player {
+  padding: 8px;
+  margin: 5px 0;
+  background: #111;
+  border-radius: 6px;
+  transition: 0.2s;
+}
+
+.player:hover {
+  transform: scale(1.02);
+}
+
+/* 🥇 TOP 3 GLOW */
+.gold { color: gold; text-shadow: 0 0 10px gold; }
+.silver { color: silver; text-shadow: 0 0 10px silver; }
+.bronze { color: #cd7f32; text-shadow: 0 0 10px #cd7f32; }
+
+#gameTitle {
+  font-size: 18px;
+  margin: 10px 0;
+  opacity: 0.8;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🏆 CUP LIVE</h1>
+
+<div id="gameTitle">Game: loading...</div>
+
+<select id="gameSelect"></select>
+
+<select id="viewSelect">
+  <option value="leaderboard">Leaderboard</option>
+  <option value="overall">Overall</option>
+  <option value="bracket">Bracket</option>
+</select>
+
+<div id="board"></div>
+
+<script>
+let state = {};
+let currentGame = "";
+let view = "leaderboard";
+
+// ---------------- LOAD DATA ----------------
+async function load() {
+  try {
+    const res = await fetch("/data");
+    state = await res.json();
+
+    const games = state.games || {};
+
+    // ---------------- GAME DROPDOWN ----------------
+    const gameSelect = document.getElementById("gameSelect");
+
+    gameSelect.innerHTML = Object.keys(games)
+      .map(g => `<option value="${g}">${g}</option>`)
+      .join("");
+
+    if (!currentGame || !games[currentGame]) {
+      currentGame = Object.keys(games)[0] || "";
+    }
+
+    gameSelect.value = currentGame;
+
+    // ---------------- TITLE FIX ----------------
+    document.getElementById("gameTitle").innerText =
+      "Game: " + (currentGame || "No Game");
+
+    const game = games[currentGame] || {};
+
+    // ---------------- SELECT DATA SOURCE ----------------
+    let data = {};
+
+    if (view === "leaderboard") {
+      data = game.leaderboard || {};
+    }
+
+    if (view === "bracket") {
+      data = game.bracket || {};
+    }
+
+    if (view === "overall") {
+      data = state.overall || {};
+    }
+
+    // ---------------- SAFE ARRAY ----------------
+    const list = Object.values(data || {})
+      .filter(Boolean)
+      .sort((a, b) =>
+        (b.points || b.wins || 0) - (a.points || a.wins || 0)
+      );
+
+    const board = document.getElementById("board");
+
+    if (!list.length) {
+      board.innerHTML = "<div>No players yet</div>";
+      return;
+    }
+
+    // ---------------- RENDER ----------------
+    board.innerHTML = list.map((p, i) => {
+
+      const name = p.name || "Unknown";
+      const score = p.points ?? p.wins ?? 0;
+
+      let cls = "";
+      if (i === 0) cls = "gold";
+      else if (i === 1) cls = "silver";
+      else if (i === 2) cls = "bronze";
+
+      return `
+        <div class="player ${cls}">
+          ${i + 1}. ${name} — ${score} pts
+        </div>
+      `;
+    }).join("");
+
+  } catch (err) {
+    console.error("Overlay error:", err);
+  }
+}
+
+// ---------------- EVENTS ----------------
 document.getElementById("gameSelect").addEventListener("change", e => {
   currentGame = e.target.value;
   load();
 });
 
-setInterval(load, 2000);
+document.getElementById("viewSelect").addEventListener("change", e => {
+  view = e.target.value;
+  load();
+});
+
+// ---------------- AUTO REFRESH ----------------
+setInterval(load, 1500);
 load();
 </script>
+
+</body>
+</html>
