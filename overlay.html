@@ -12,138 +12,52 @@ body {
   padding: 20px;
 }
 
-h1 { margin-bottom: 5px; }
-
-select {
-  margin: 5px;
-  padding: 6px;
-  background: #111;
-  color: white;
-}
-
-#gameTitle {
-  opacity: 0.7;
-  margin: 10px 0;
-}
-
 .player {
   padding: 8px;
-  margin: 6px 0;
+  margin: 5px;
   background: #111;
   border-radius: 6px;
 }
 
-.gold { color: gold; text-shadow: 0 0 10px gold; }
-.silver { color: silver; text-shadow: 0 0 10px silver; }
-.bronze { color: #cd7f32; text-shadow: 0 0 10px #cd7f32; }
-
-.empty {
-  opacity: 0.6;
-}
+.gold { color: gold; }
+.silver { color: silver; }
+.bronze { color: #cd7f32; }
 </style>
 </head>
 
 <body>
 
 <h1>🏆 CUP LIVE</h1>
-
-<div id="title">Game: (waiting)</div>
-
-<select id="games"></select>
-
-<select id="view">
-  <option value="leaderboard">Leaderboard</option>
-  <option value="overall">Overall</option>
-  <option value="bracket">Bracket</option>
-</select>
-
+<div id="game"></div>
 <div id="board"></div>
 
 <script>
-let state = {};
-let currentGame = "";
-let view = "leaderboard";
-
 async function load() {
-  const res = await fetch("/data?t=" + Date.now()); // no cache
-  state = await res.json();
+  const res = await fetch("/data?t=" + Date.now());
+  const data = await res.json();
 
-  const games = state.games || {};
-  const names = Object.keys(games);
+  document.getElementById("game").innerText =
+    "Game: " + (data.game || "Waiting...");
 
-  const select = document.getElementById("games");
-
-  select.innerHTML = names.map(g =>
-    `<option value="${g}">${g}</option>`
-  ).join("");
-
-  if (!names.includes(currentGame)) {
-    currentGame = names[0] || "";
-  }
-
-  select.value = currentGame;
-
-  document.getElementById("title").innerText =
-    currentGame ? `Game: ${currentGame}` : "Game: (waiting for /start)";
-
-  const game = games[currentGame];
-
-  let data = {};
-
-  if (!game) {
-    data = {};
-  } else if (view === "leaderboard") {
-    data = game.leaderboard || {};
-  } else if (view === "bracket") {
-    data = game.bracket || {};
-  } else {
-    data = state.overall || {};
-  }
-
-  const list = Object.values(data || {})
-    .filter(Boolean)
-    .sort((a, b) => (b.points || 0) - (a.points || 0));
+  const scores = Object.entries(data.scores || {})
+    .sort((a,b)=>b[1]-a[1]);
 
   const board = document.getElementById("board");
 
-  if (!currentGame) {
-    board.innerHTML = "<div class='empty'>Start a game with /start</div>";
+  if (!scores.length) {
+    board.innerHTML = "No players yet";
     return;
   }
 
-  if (list.length === 0) {
-    board.innerHTML = "<div class='empty'>No scores yet</div>";
-    return;
-  }
-
-  board.innerHTML = list.map((p, i) => {
-
-    let cls = "";
-    if (i === 0) cls = "gold";
-    else if (i === 1) cls = "silver";
-    else if (i === 2) cls = "bronze";
-
-    return `
-      <div class="player ${cls}">
-        ${i + 1}. ${p.name || "Unknown"} — ${p.points || 0}
-      </div>
-    `;
+  board.innerHTML = scores.map((p,i)=>{
+    let cls = i==0?"gold":i==1?"silver":i==2?"bronze":"";
+    return `<div class="player ${cls}">
+      ${i+1}. ${p[0]} — ${p[1]}
+    </div>`;
   }).join("");
 }
 
-document.getElementById("games").addEventListener("change", e => {
-  currentGame = e.target.value;
-  load();
-});
-
-document.getElementById("view").addEventListener("change", e => {
-  view = e.target.value;
-  load();
-});
-
-// 🔥 FAST LIVE UPDATE
 setInterval(load, 1000);
-
 load();
 </script>
 
