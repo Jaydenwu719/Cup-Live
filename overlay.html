@@ -1,27 +1,24 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <title>CUP LIVE</title>
 
 <style>
 body {
   background: black;
   color: white;
-  font-family: Arial, sans-serif;
+  font-family: Arial;
   padding: 20px;
 }
 
-h1 {
-  margin-bottom: 5px;
-}
+h1 { margin-bottom: 5px; }
 
 select {
-  padding: 6px;
   margin: 5px;
+  padding: 6px;
   background: #111;
   color: white;
-  border: 1px solid #444;
 }
 
 #gameTitle {
@@ -36,14 +33,12 @@ select {
   border-radius: 6px;
 }
 
-/* 🥇 TOP 3 GLOW */
 .gold { color: gold; text-shadow: 0 0 10px gold; }
 .silver { color: silver; text-shadow: 0 0 10px silver; }
 .bronze { color: #cd7f32; text-shadow: 0 0 10px #cd7f32; }
 
 .empty {
   opacity: 0.6;
-  padding: 10px;
 }
 </style>
 </head>
@@ -52,11 +47,11 @@ select {
 
 <h1>🏆 CUP LIVE</h1>
 
-<div id="gameTitle">Game: (waiting for /start)</div>
+<div id="title">Game: (waiting)</div>
 
-<select id="gameSelect"></select>
+<select id="games"></select>
 
-<select id="viewSelect">
+<select id="view">
   <option value="leaderboard">Leaderboard</option>
   <option value="overall">Overall</option>
   <option value="bracket">Bracket</option>
@@ -69,100 +64,86 @@ let state = {};
 let currentGame = "";
 let view = "leaderboard";
 
-// ---------------- FETCH DATA ----------------
 async function load() {
-  try {
-    const res = await fetch("/data");
-    state = await res.json();
+  const res = await fetch("/data?t=" + Date.now()); // no cache
+  state = await res.json();
 
-    const games = state.games || {};
-    const gameNames = Object.keys(games);
+  const games = state.games || {};
+  const names = Object.keys(games);
 
-    const select = document.getElementById("gameSelect");
+  const select = document.getElementById("games");
 
-    // ---------------- GAME LIST ----------------
-    select.innerHTML = gameNames.length
-      ? gameNames.map(g => `<option value="${g}">${g}</option>`).join("")
-      : "";
+  select.innerHTML = names.map(g =>
+    `<option value="${g}">${g}</option>`
+  ).join("");
 
-    // ---------------- SAFE GAME ----------------
-    if (!currentGame || !games[currentGame]) {
-      currentGame = gameNames[0] || "";
-    }
-
-    select.value = currentGame;
-
-    // ---------------- TITLE ----------------
-    document.getElementById("gameTitle").innerText =
-      currentGame ? `Game: ${currentGame}` : "Game: (waiting for /start)";
-
-    const game = games[currentGame] || {
-      leaderboard: {},
-      bracket: {}
-    };
-
-    // ---------------- DATA SOURCE ----------------
-    let data = {};
-
-    if (view === "leaderboard") data = game.leaderboard || {};
-    if (view === "bracket") data = game.bracket || {};
-    if (view === "overall") data = state.overall || {};
-
-    const list = Object.values(data || {})
-      .filter(Boolean)
-      .sort((a, b) => (b.points || b.wins || 0) - (a.points || a.wins || 0));
-
-    const board = document.getElementById("board");
-
-    // ---------------- EMPTY STATE ----------------
-    if (!currentGame) {
-      board.innerHTML = `<div class="empty">Start a game with /start</div>`;
-      return;
-    }
-
-    if (list.length === 0) {
-      board.innerHTML = `<div class="empty">No scores yet...</div>`;
-      return;
-    }
-
-    // ---------------- RENDER ----------------
-    board.innerHTML = list.map((p, i) => {
-
-      const name = p.name || "Unknown";
-      const score = p.points ?? p.wins ?? 0;
-
-      let cls = "";
-      if (i === 0) cls = "gold";
-      else if (i === 1) cls = "silver";
-      else if (i === 2) cls = "bronze";
-
-      return `
-        <div class="player ${cls}">
-          ${i + 1}. ${name} — ${score}
-        </div>
-      `;
-    }).join("");
-
-  } catch (err) {
-    console.error("Overlay error:", err);
-    document.getElementById("board").innerHTML =
-      "<div class='empty'>Loading error...</div>";
+  if (!names.includes(currentGame)) {
+    currentGame = names[0] || "";
   }
+
+  select.value = currentGame;
+
+  document.getElementById("title").innerText =
+    currentGame ? `Game: ${currentGame}` : "Game: (waiting for /start)";
+
+  const game = games[currentGame];
+
+  let data = {};
+
+  if (!game) {
+    data = {};
+  } else if (view === "leaderboard") {
+    data = game.leaderboard || {};
+  } else if (view === "bracket") {
+    data = game.bracket || {};
+  } else {
+    data = state.overall || {};
+  }
+
+  const list = Object.values(data || {})
+    .filter(Boolean)
+    .sort((a, b) => (b.points || 0) - (a.points || 0));
+
+  const board = document.getElementById("board");
+
+  if (!currentGame) {
+    board.innerHTML = "<div class='empty'>Start a game with /start</div>";
+    return;
+  }
+
+  if (list.length === 0) {
+    board.innerHTML = "<div class='empty'>No scores yet</div>";
+    return;
+  }
+
+  board.innerHTML = list.map((p, i) => {
+
+    let cls = "";
+    if (i === 0) cls = "gold";
+    else if (i === 1) cls = "silver";
+    else if (i === 2) cls = "bronze";
+
+    return `
+      <div class="player ${cls}">
+        ${i + 1}. ${p.name || "Unknown"} — ${p.points || 0}
+      </div>
+    `;
+  }).join("");
 }
 
-// ---------------- EVENTS ----------------
-document.getElementById("gameSelect").addEventListener("change", e => {
+document.getElementById("games").addEventListener("change", e => {
   currentGame = e.target.value;
   load();
 });
 
-document.getElementById("viewSelect").addEventListener("change", e => {
+document.getElementById("view").addEventListener("change", e => {
   view = e.target.value;
   load();
 });
 
-// ---------------- LIVE REFRESH ----------------
-setInterval(load, 1500);
+// 🔥 FAST LIVE UPDATE
+setInterval(load, 1000);
+
 load();
 </script>
 
